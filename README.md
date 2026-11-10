@@ -1,5 +1,5 @@
 # Aula25_BigData_M2
-## Análise de Dados do Novo Bolsa Família com Polars
+# Análise de Dados do Novo Bolsa Família com Polars
 
 Conjunto de scripts em Python que demonstram como carregar, consolidar e armazenar os arquivos mensais do **Novo Bolsa Família** (CSV) usando **Polars**, comparando o desempenho com o **Pandas**.
 
@@ -8,6 +8,7 @@ O fluxo é composto por três etapas:
 1. Ler os CSVs mensais e concatenar em um único DataFrame
 2. Tratar os dados e salvar tudo em um arquivo **Parquet**
 3. Ler o Parquet (leitura direta e leitura preguiçosa)
+4. Gerar um boxplot do valor das parcelas com Matplotlib
 
 ---
 
@@ -40,8 +41,10 @@ Os scripts esperam encontrar os dados em uma pasta `DADOS` um nível acima da pa
 - Bibliotecas:
 
 ```bash
-pip install pandas polars fastparquet
+pip install pandas polars fastparquet numpy matplotlib
 ```
+
+> `numpy` e `matplotlib` são usados apenas na etapa de visualização do `exemplo02.py`. O parâmetro `orientation='horizontal'` do `plt.boxplot` exige o **Matplotlib 3.10 ou superior**; em versões anteriores use `vert=False`.
 
 > **Observação:** os scripts usam `subprocess.run('cls', shell=True)` para limpar o terminal, comando que funciona apenas no **Windows**. No Linux/macOS, troque por `'clear'`.
 
@@ -69,9 +72,13 @@ Versão mais completa: em vez de uma lista fixa, **varre a pasta** `BOLSA_FAMILI
 
 O bloco de leitura com Pandas está comentado no código para facilitar a comparação.
 
-### `exemplo02.py` — Leitura do arquivo Parquet
+### `exemplo02.py` — Leitura do arquivo Parquet e boxplot
 
-Mostra as formas de ler o `bolsa_familia.parquet` gerado pelo script anterior:
+Dividido em duas partes: leitura do `bolsa_familia.parquet` gerado pelo script anterior e um primeiro processamento visual dos dados.
+
+#### Parte 1: Leitura
+
+Mostra as formas de ler o arquivo:
 
 | Método | Descrição |
 |---|---|
@@ -80,6 +87,16 @@ Mostra as formas de ler o `bolsa_familia.parquet` gerado pelo script anterior:
 | `pl.scan_parquet` + `.collect()` | **Leitura preguiçosa (lazy):** cria um plano de execução e só carrega os dados quando `.collect()` é chamado |
 
 A leitura preguiçosa é útil quando se encadeiam filtros e seleções de colunas antes do `collect()`, pois o Polars otimiza a consulta e lê somente o necessário.
+
+#### Parte 2: Processamento (boxplot)
+
+Depois de carregar os dados, o script:
+
+1. Converte a coluna `VALOR PARCELA` (já `Float64`, graças ao tratamento feito no `exemplo01.py`) em um array do NumPy
+2. Gera um **boxplot horizontal** com `plt.boxplot`, útil para visualizar mediana, quartis e valores atípicos (outliers) das parcelas
+3. Exibe o gráfico com `plt.show()` e imprime o tempo total
+
+Essa etapa depende de o `exemplo01.py` ter sido executado antes, pois é ele que converte a coluna para número.
 
 ---
 
@@ -105,7 +122,7 @@ Execute na ordem:
 ```bash
 python exemplo.py      # (opcional) teste de leitura e concatenação
 python exemplo01.py    # consolida os CSVs e gera o .parquet
-python exemplo02.py    # lê o .parquet gerado
+python exemplo02.py    # lê o .parquet gerado e exibe o boxplot
 ```
 
 ---
@@ -115,6 +132,10 @@ python exemplo02.py    # lê o .parquet gerado
 - Em `exemplo.py`, a mensagem impressa diz "Janeiro, fevereiro e março", mas a lista inclui arquivos até maio (`202605`). Vale atualizar o texto.
 - Nos `print` de tempo total falta um espaço: `f'Tempo total{fim - inicio}'` → `f'Tempo total: {fim - inicio}'`.
 - O `pandas` é importado em todos os scripts, mas só é usado nos trechos comentados.
+- No `exemplo02.py`, o `fim = datetime.now()` da etapa do boxplot é registrado **antes** do `plt.show()`, então o tempo impresso não inclui o tempo em que o gráfico fica aberto. Além disso, ele é calculado a partir do mesmo `inicio` da leitura, somando as duas etapas.
+- Ainda no `exemplo02.py`, o `np.array(df['VALOR PARCELA'])` copia a coluna inteira para a memória. Como o Polars já expõe a coluna como Series, `df['VALOR PARCELA'].to_numpy()` evita parte dessa conversão.
+- Com muitos milhões de linhas, o boxplot pode ser lento. Se for o caso, considere plotar uma amostra (`df.sample(n=...)`).
+- No bloco de erro do boxplot, o `print('Erro')` não mostra a mensagem da exceção; vale usar `print(f'Erro - {e}')`, como nos demais blocos.
 - O `fastparquet` só é necessário para o Pandas; o Polars grava e lê Parquet sem ele.
 - Se algum CSV tiver colunas diferentes, o `pl.concat` falhará. Nesse caso, use `pl.concat(..., how='diagonal')`.
 - Se a leitura do CSV falhar ao inferir tipos, experimente `infer_schema_length=10000` ou `infer_schema=False` em `pl.read_csv`.

@@ -30,15 +30,26 @@ try:
     df_bolsa_familia = df_bolsa_familia.collect()
     print(df_bolsa_familia.head())
 
-
-
-
-
-
-
     fim = datetime.now()
     print(f'Tempo total{fim - inicio}')
 
 except Exception as e:
     print(f'Erro ao obter dados parquet - {e}')
+    print(f'Linha: {e.__traceback__.tb_lineno}')
+
+
+# Processamento
+try:
+    import numpy as np
+    import matplotlib.pyplot as plt
+    array_valor_parcela = np.array(df_bolsa_familia['VALOR PARCELA'])
+
+    plt.boxplot(array_valor_parcela, orientation='horizontal')
+    fim = datetime.now()
+    plt.show()
+
+    print(f'Tempo total {fim - inicio}')
+
+except Exception as e:
+    print('Erro')
     print(f'Linha: {e.__traceback__.tb_lineno}')
